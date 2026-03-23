@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test 3 — Slow Language</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0d0f0a;
+    --dim: rgba(180,210,120,0.12);
+    --glow: rgba(160,200,90,0.85);
+    --mid: rgba(140,180,80,0.5);
+    --faint: rgba(120,160,70,0.2);
+  }
+  body {
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: text;
+    overflow: hidden;
+  }
+  canvas {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  #input-area {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 10;
+  }
+  input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(160,200,90,0.3);
+    color: rgba(160,200,90,0.7);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    padding: 6px 4px;
+    width: 260px;
+    outline: none;
+    text-transform: uppercase;
+    caret-color: rgba(160,200,90,0.8);
+  }
+  input::placeholder { color: rgba(160,200,90,0.2); }
+  button {
+    background: transparent;
+    border: 1px solid rgba(160,200,90,0.25);
+    color: rgba(160,200,90,0.5);
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 6px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  button:hover { border-color: rgba(160,200,90,0.6); color: rgba(160,200,90,0.9); }
+  #title {
+    position: fixed; top: 32px; left: 40px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(160,200,90,0.2); text-transform: uppercase;
+  }
+  #timer {
+    position: fixed; top: 32px; right: 40px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.15em;
+    color: rgba(160,200,90,0.25); text-transform: uppercase;
+  }
+  #hint {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(160,200,90,0.18); text-transform: uppercase;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="title">Test 03 — Slow Language</div>
+<div id="timer">Growing...</div>
+<canvas id="c"></canvas>
+<div id="input-area">
+  <input id="wordInput" type="text" placeholder="type a sentence..." maxlength="60" />
+  <button onclick="startGrow()">PLANT</button>
+  <button onclick="clearAll()">CLEAR</button>
+</div>
+<div id="hint">Language grows at the speed of fungi — type and wait</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let queue = [];       // characters waiting to be drawn
+let rendered = [];    // fully grown characters with their thread trails
+let growing = false;
+let startTime = null;
+let currentX = 0;
+let currentY = canvas.height / 2;
+let lineStartX = 0;
+const CHAR_DELAY = 1400; // ms per character — fungi speed
+const FONT_SIZE = 52;
+const LINE_MAX_WIDTH = canvas.width * 0.72;
+const LINE_START_X = canvas.width * 0.14;
+
+function startGrow() {
+  const text = document.getElementById('wordInput').value.trim();
+  if (!text) return;
+  clearAll();
+  queue = text.toUpperCase().split('');
+  currentX = LINE_START_X;
+  lineStartX = LINE_START_X;
+  currentY = canvas.height / 2;
+  growing = true;
+  startTime = Date.now();
+  growNext();
+}
+
+function growNext() {
+  if (queue.length === 0) { growing = false; return; }
+  const ch = queue.shift();
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  document.getElementById('timer').textContent = `+${elapsed}s`;
+
+  // Wrap line
+  if (ch !== ' ' && currentX > LINE_START_X + LINE_MAX_WIDTH - FONT_SIZE) {
+    currentY += FONT_SIZE * 1.8;
+    currentX = LINE_START_X;
+  }
+
+  drawCharGrow(ch, currentX, currentY, () => {
+    rendered.push({ ch, x: currentX, y: currentY });
+    if (ch === ' ') currentX += FONT_SIZE * 0.45;
+    else currentX += FONT_SIZE * 0.72;
+    setTimeout(growNext, CHAR_DELAY);
+  });
+}
+
+function drawCharGrow(ch, x, y, done) {
+  if (ch === ' ') { done(); return; }
+
+  // Step 1: draw mycelium threads first
+  const threadCount = 6 + Math.floor(Math.random() * 6);
+  for (let i = 0; i < threadCount; i++) {
+    drawThread(x + FONT_SIZE * 0.3, y, i, threadCount);
+  }
+
+  // Step 2: fade in the character slowly
+  let alpha = 0;
+  const duration = 900;
+  const start = performance.now();
+
+  function fadeIn(now) {
+    alpha = Math.min(1, (now - start) / duration);
+    redrawStatic();
+    // Draw current fading char
+    ctx.save();
+    ctx.font = `300 ${FONT_SIZE}px 'Courier New', monospace`;
+    ctx.fillStyle = `rgba(160,200,90,${alpha * 0.88})`;
+    ctx.shadowColor = `rgba(160,200,90,${alpha * 0.4})`;
+    ctx.shadowBlur = 14;
+    ctx.fillText(ch, x, y);
+    ctx.restore();
+    if (alpha < 1) requestAnimationFrame(fadeIn);
+    else done();
+  }
+  requestAnimationFrame(fadeIn);
+}
+
+function drawThread(ox, oy, index, total) {
+  const angle = (index / total) * Math.PI * 2 + Math.random() * 0.5;
+  const length = 18 + Math.random() * 40;
+  const steps = Math.floor(length / 3);
+  let cx = ox, cy = oy, a = angle;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  for (let s = 0; s < steps; s++) {
+    a += (Math.random() - 0.5) * 0.6;
+    cx += Math.cos(a) * 3;
+    cy += Math.sin(a) * 3;
+    ctx.lineTo(cx, cy);
+  }
+  const alpha = 0.08 + Math.random() * 0.18;
+  ctx.strokeStyle = `rgba(160,200,90,${alpha})`;
+  ctx.lineWidth = 0.6 + Math.random() * 0.8;
+  ctx.stroke();
+
+  // spore dot at tip
+  if (Math.random() < 0.4) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, 1 + Math.random() * 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(160,200,90,${alpha * 1.5})`;
+    ctx.fill();
+  }
+}
+
+function redrawStatic() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  rendered.forEach(r => {
+    ctx.save();
+    ctx.font = `300 ${FONT_SIZE}px 'Courier New', monospace`;
+    ctx.fillStyle = `rgba(160,200,90,0.88)`;
+    ctx.shadowColor = `rgba(160,200,90,0.3)`;
+    ctx.shadowBlur = 12;
+    ctx.fillText(r.ch, r.x, r.y);
+    ctx.restore();
+  });
+}
+
+function clearAll() {
+  queue = [];
+  rendered = [];
+  growing = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('timer').textContent = 'Growing...';
+  currentX = LINE_START_X;
+  currentY = canvas.height / 2;
+}
+
+document.getElementById('wordInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') startGrow();
+});
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  redrawStatic();
+});
+</script>
+</body>
+</html>

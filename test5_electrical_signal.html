@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test 5 — Colony Signal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #f8f6f2;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  canvas { display: block; position: fixed; inset: 0; }
+  #title {
+    position: fixed; top: 32px; left: 40px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(20,20,20,0.2); text-transform: uppercase;
+    z-index: 10; pointer-events: none;
+  }
+  #hint {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(20,20,20,0.18); text-transform: uppercase;
+    white-space: nowrap; z-index: 10; pointer-events: none;
+  }
+  #reset-btn {
+    position: fixed; top: 28px; right: 36px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(20,20,20,0.22); background: none;
+    border: 1px solid rgba(20,20,20,0.12);
+    padding: 6px 14px; cursor: pointer; transition: all 0.3s; z-index: 10;
+  }
+  #reset-btn:hover { color: rgba(20,20,20,0.7); border-color: rgba(20,20,20,0.35); }
+</style>
+</head>
+<body>
+<div id="title">Test 05 — Colony Signal</div>
+<canvas id="c"></canvas>
+<button id="reset-btn" onclick="resetAll()">Clear</button>
+<div id="hint">Click anywhere to grow a colony — clusters drift and accumulate</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+
+// ── Colony: a cluster of nodes at a position ──
+let colonies = [];
+let nodes = [];    // individual spiral nodes
+let connections = []; // thin arcs connecting nearby colonies
+
+class SpiralNode {
+  constructor(x, y, r, parentId) {
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.parentId = parentId;
+    this.vx = (Math.random() - 0.5) * 0.5;
+    this.vy = (Math.random() - 0.5) * 0.5;
+    this.age = 0;
+    this.maxAge = 900 + Math.random() * 600;
+    this.spiralLines = buildSpiralLines(r);
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotSpeed = (Math.random() - 0.5) * 0.003;
+    this.alive = true;
+  }
+
+  update() {
+    this.age++;
+    this.rotation += this.rotSpeed;
+    this.vx += (Math.random() - 0.5) * 0.018;
+    this.vy += (Math.random() - 0.5) * 0.018;
+    this.vx *= 0.97;
+    this.vy *= 0.97;
+    this.x += this.vx;
+    this.y += this.vy;
+    // gentle boundary
+    if (this.x < 40) this.vx += 0.08;
+    if (this.x > W - 40) this.vx -= 0.08;
+    if (this.y < 40) this.vy += 0.08;
+    if (this.y > H - 40) this.vy -= 0.08;
+
+    if (this.age > this.maxAge) this.alive = false;
+  }
+
+  draw() {
+    const lifeRatio = Math.min(1, this.age / 60); // fade in
+    const deathRatio = Math.max(0, 1 - (this.age - this.maxAge + 80) / 80); // fade out
+    const alpha = lifeRatio * deathRatio;
+
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rotation);
+
+    // Draw each spiral line with per-segment opacity:
+    // outer (t≈0) = more transparent, inner (t≈1) = more opaque → dark center
+    for (const line of this.spiralLines) {
+      const pts = line.pts;
+      ctx.lineWidth = line.width;
+      ctx.lineCap = 'round';
+      for (let i = 1; i < pts.length; i++) {
+        const t = pts[i].t; // 0=outer, 1=center
+        // darkest at center, fades to near-invisible at rim
+        const segAlpha = alpha * line.baseOpacity * (0.1 + t * t * 2.8);
+        ctx.beginPath();
+        ctx.moveTo(pts[i-1].x, pts[i-1].y);
+        ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.strokeStyle = `rgba(10,10,10,${segAlpha})`;
+        ctx.stroke();
+      }
+    }
+
+    // Outer ghost circle
+    ctx.beginPath();
+    ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(10,10,10,${alpha * 0.06})`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    ctx.restore();
+  }
+}
+
+// Build spiral lines: dense dark center, fading bright outer edge
+function buildSpiralLines(r) {
+  const lines = [];
+  const lineCount = Math.floor(70 + Math.random() * 90);
+
+  for (let i = 0; i < lineCount; i++) {
+    const baseAngle = (i / lineCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
+    const pts = [];
+    const steps = 50 + Math.floor(Math.random() * 30);
+    const maxR = r * (0.7 + Math.random() * 0.45);
+    const windFactor = 1.4 + Math.random() * 2.0;
+
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps; // t=0: outer edge, t=1: center
+      const dist = maxR * (1 - t);
+      const angle = baseAngle + t * Math.PI * windFactor;
+      pts.push({
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist,
+        // opacity fades OUT toward center — bright outer, dark inner accumulation
+        // We encode per-point opacity: high at outer (t~0), low at center (t~1)
+        // But we draw the whole line at once, so we use segment drawing below
+        t: t,
+      });
+    }
+
+    lines.push({
+      pts,
+      width: 0.18 + Math.random() * 0.22,
+      baseOpacity: 0.025 + Math.random() * 0.04,
+      length: pts.length,
+    });
+  }
+
+  return lines;
+}
+
+// ── Spawn colony at position ──
+let colonyId = 0;
+function spawnColony(cx, cy) {
+  const id = colonyId++;
+  const nodeCount = 4 + Math.floor(Math.random() * 6);
+
+  for (let i = 0; i < nodeCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.random() * 35;
+    const r = 14 + Math.random() * 32;
+    const node = new SpiralNode(
+      cx + Math.cos(angle) * dist,
+      cy + Math.sin(angle) * dist,
+      r, id
+    );
+    // stagger birth
+    node.age = -Math.floor(i * 18);
+    nodes.push(node);
+  }
+
+  colonies.push({ id, x: cx, y: cy });
+
+  // occasionally spawn a satellite — smaller node drifting away
+  if (Math.random() < 0.45) {
+    const angle = Math.random() * Math.PI * 2;
+    const sat = new SpiralNode(
+      cx + Math.cos(angle) * (50 + Math.random() * 60),
+      cy + Math.sin(angle) * (50 + Math.random() * 60),
+      8 + Math.random() * 14, id
+    );
+    sat.age = -90;
+    nodes.push(sat);
+  }
+}
+
+// ── Draw thin arcs between nearby nodes ──
+function drawConnections() {
+  const live = nodes.filter(n => n.alive && n.age > 0);
+  for (let i = 0; i < live.length; i++) {
+    for (let j = i + 1; j < live.length; j++) {
+      const a = live[i], b = live[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d > 160 || d < 5) continue;
+
+      const alpha = (1 - d / 160) * 0.022;
+      // arc midpoint offset for curve
+      const mx = (a.x + b.x) / 2 + (Math.random() - 0.5) * 30;
+      const my = (a.y + b.y) / 2 + (Math.random() - 0.5) * 30;
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(mx, my, b.x, b.y);
+      ctx.strokeStyle = `rgba(10,10,10,${alpha})`;
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+    }
+  }
+}
+
+// ── Main loop ──
+function loop() {
+  // Very slow fade — let lines accumulate like growth layers
+  ctx.fillStyle = 'rgba(248,246,242,0.06)';
+  ctx.fillRect(0, 0, W, H);
+
+  drawConnections();
+
+  nodes = nodes.filter(n => {
+    n.update();
+    n.draw();
+    return n.alive;
+  });
+
+  requestAnimationFrame(loop);
+}
+
+// ── Interaction ──
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  spawnColony(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+// Drag to paint colonies
+let painting = false;
+let lastPaint = 0;
+canvas.addEventListener('mousedown', () => { painting = true; });
+canvas.addEventListener('mouseup', () => { painting = false; });
+canvas.addEventListener('mousemove', e => {
+  if (!painting) return;
+  const now = Date.now();
+  if (now - lastPaint < 280) return;
+  lastPaint = now;
+  const rect = canvas.getBoundingClientRect();
+  spawnColony(e.clientX - rect.left, e.clientY - rect.top);
+});
+
+function resetAll() {
+  nodes = [];
+  colonies = [];
+  ctx.fillStyle = '#f8f6f2';
+  ctx.fillRect(0, 0, W, H);
+}
+
+// Seed a few initial colonies
+function seedInitial() {
+  const seeds = [
+    { x: W * 0.28, y: H * 0.25 },
+    { x: W * 0.62, y: H * 0.32 },
+    { x: W * 0.42, y: H * 0.58 },
+    { x: W * 0.72, y: H * 0.68 },
+    { x: W * 0.22, y: H * 0.72 },
+  ];
+  seeds.forEach((s, i) => {
+    setTimeout(() => spawnColony(s.x, s.y), i * 200);
+  });
+}
+
+seedInitial();
+loop();
+
+window.addEventListener('resize', () => {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+});
+</script>
+</body>
+</html>

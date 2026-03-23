@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Test 4 — Metaball Fission</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #080808;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  canvas { display: block; position: fixed; inset: 0; }
+  #title {
+    position: fixed; top: 32px; left: 40px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(240,235,220,0.15); text-transform: uppercase;
+    z-index: 10; pointer-events: none;
+  }
+  #hint {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(240,235,220,0.12); text-transform: uppercase;
+    white-space: nowrap; z-index: 10; pointer-events: none;
+  }
+  #reset-btn {
+    position: fixed; top: 28px; right: 36px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(240,235,220,0.2); background: none;
+    border: 1px solid rgba(240,235,220,0.1);
+    padding: 6px 14px; cursor: pointer; transition: all 0.3s; z-index: 10;
+  }
+  #reset-btn:hover { color: rgba(240,235,220,0.7); border-color: rgba(240,235,220,0.35); }
+</style>
+</head>
+<body>
+<div id="title">Test 04 — Metaball Fission</div>
+<canvas id="c"></canvas>
+<button id="reset-btn" onclick="resetAll()">Reset</button>
+<div id="hint">Click a blob to split — fission until minimum size</div>
+
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+
+// ── Ball class ──
+let balls = [];
+let nextId = 0;
+
+const PALETTE = [
+  [255, 255, 255],
+  [200, 240, 160],
+  [140, 220, 255],
+  [255, 180, 120],
+  [220, 160, 255],
+  [255, 220, 100],
+  [160, 255, 200],
+  [255, 140, 160],
+];
+let currentColorIdx = 0;
+function nextColor() {
+  currentColorIdx = (currentColorIdx + 1 + Math.floor(Math.random() * (PALETTE.length - 1))) % PALETTE.length;
+  return PALETTE[currentColorIdx];
+}
+
+class Ball {
+  constructor(x, y, r, vx = 0, vy = 0, color = null) {
+    this.id = nextId++;
+    this.x = x;
+    this.y = y;
+    this.r = r;
+    this.vx = vx + (Math.random() - 0.5) * 1.2;
+    this.vy = vy + (Math.random() - 0.5) * 1.2;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 0.006 + Math.random() * 0.01;
+    this.wobbleAmp = 0.5 + Math.random() * 1.0;
+    this.splitFlash = 0;
+    this.age = 0;
+    this.color = color || [255, 255, 255];
+  }
+
+  update() {
+    this.wobble += this.wobbleSpeed;
+    this.age++;
+
+    // gentle drift
+    this.vx += (Math.random() - 0.5) * 0.03;
+    this.vy += (Math.random() - 0.5) * 0.03;
+    this.vx *= 0.985;
+    this.vy *= 0.985;
+
+    this.x += this.vx + Math.sin(this.wobble) * this.wobbleAmp * 0.2;
+    this.y += this.vy + Math.cos(this.wobble * 0.8) * this.wobbleAmp * 0.2;
+
+    // soft boundary
+    const pad = this.r * 0.5;
+    if (this.x < pad)     this.vx += 0.15;
+    if (this.x > W - pad) this.vx -= 0.15;
+    if (this.y < pad)     this.vy += 0.15;
+    if (this.y > H - pad) this.vy -= 0.15;
+
+    if (this.splitFlash > 0) this.splitFlash -= 0.06;
+  }
+}
+
+// ── Metaball renderer ──
+const THRESHOLD = 0.55;
+let sw, sh, field;
+
+function initField() {
+  sw = Math.ceil(W / 2);
+  sh = Math.ceil(H / 2);
+  field = new Float32Array(sw * sh);
+}
+initField();
+
+function renderMetaballs() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Pass 1: build low-res field for click detection
+  field.fill(0);
+  for (const b of balls) {
+    const bx = b.x / 2, by = b.y / 2, br = b.r / 2;
+    const minX = Math.max(0, Math.floor(bx - br * 3.2));
+    const maxX = Math.min(sw - 1, Math.ceil(bx + br * 3.2));
+    const minY = Math.max(0, Math.floor(by - br * 3.2));
+    const maxY = Math.min(sh - 1, Math.ceil(by + br * 3.2));
+    for (let gy = minY; gy <= maxY; gy++) {
+      for (let gx = minX; gx <= maxX; gx++) {
+        const dx = gx - bx, dy = gy - by, d2 = dx*dx + dy*dy;
+        field[gy * sw + gx] += (br * br) / (d2 + 0.001);
+      }
+    }
+  }
+
+  // Pass 2: draw each ball as soft radial gradient — sharp + colored
+  const sorted = [...balls].sort((a, b) => b.r - a.r);
+  sorted.forEach(b => {
+    const [r, g, bl] = b.color;
+    const spread = b.r * 2.2;
+    const gr = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, spread);
+    gr.addColorStop(0,    `rgba(255,255,255,1.0)`);
+    gr.addColorStop(0.10, `rgba(${r},${g},${bl},0.95)`);
+    gr.addColorStop(0.35, `rgba(${r},${g},${bl},0.75)`);
+    gr.addColorStop(0.60, `rgba(${Math.round(r*0.6)},${Math.round(g*0.6)},${Math.round(bl*0.6)},0.35)`);
+    gr.addColorStop(0.82, `rgba(${Math.round(r*0.3)},${Math.round(g*0.3)},${Math.round(bl*0.3)},0.10)`);
+    gr.addColorStop(1.0,  'rgba(0,0,0,0)');
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, spread, 0, Math.PI * 2);
+    ctx.fillStyle = gr;
+    ctx.fill();
+    ctx.restore();
+  });
+
+  // Pass 3: soft fading cross markers
+  balls.forEach(b => {
+    if (b.r < 12) return;
+    const len = b.r * 0.36;
+    const opacity = Math.min(0.18, b.r / 200);
+
+    ctx.save();
+    ctx.lineWidth = 0.6;
+    ctx.lineCap = 'round';
+
+    const [cr,cg,cb] = b.color;
+    const gH = ctx.createLinearGradient(b.x - len, b.y, b.x + len, b.y);
+    gH.addColorStop(0,   `rgba(${cr},${cg},${cb},0)`);
+    gH.addColorStop(0.5, `rgba(${cr},${cg},${cb},${opacity})`);
+    gH.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
+    ctx.strokeStyle = gH;
+    ctx.beginPath(); ctx.moveTo(b.x - len, b.y); ctx.lineTo(b.x + len, b.y); ctx.stroke();
+
+    const gV = ctx.createLinearGradient(b.x, b.y - len, b.x, b.y + len);
+    gV.addColorStop(0,   `rgba(${cr},${cg},${cb},0)`);
+    gV.addColorStop(0.5, `rgba(${cr},${cg},${cb},${opacity})`);
+    gV.addColorStop(1,   `rgba(${cr},${cg},${cb},0)`);
+    ctx.strokeStyle = gV;
+    ctx.beginPath(); ctx.moveTo(b.x, b.y - len); ctx.lineTo(b.x, b.y + len); ctx.stroke();
+
+    ctx.restore();
+  });
+}
+
+// ── Split logic ──
+const MIN_R = 10;
+const CHILDREN = 3;
+
+function splitBall(ball) {
+  if (ball.r < MIN_R * 2) return; // too small to split
+
+  balls = balls.filter(b => b.id !== ball.id);
+
+  const newR = ball.r / Math.sqrt(CHILDREN) * 0.92;
+  const newColor = nextColor();
+  for (let i = 0; i < CHILDREN; i++) {
+    const angle = (i / CHILDREN) * Math.PI * 2 + Math.random() * 0.5;
+    const dist = ball.r * 0.4;
+    const nb = new Ball(
+      ball.x + Math.cos(angle) * dist,
+      ball.y + Math.sin(angle) * dist,
+      newR,
+      Math.cos(angle) * (1.5 + Math.random()),
+      Math.sin(angle) * (1.5 + Math.random())
+    );
+    nb.splitFlash = 1;
+    nb.color = newColor;
+    balls.push(nb);
+  }
+}
+
+// ── Click detection ──
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  // Find ball under cursor — check field value contribution
+  // pick ball whose center is closest AND whose r covers the click
+  let hit = null;
+  let bestD = Infinity;
+
+  for (const b of balls) {
+    const dx = mx - b.x, dy = my - b.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < b.r * 1.4 && d < bestD) {
+      bestD = d;
+      hit = b;
+    }
+  }
+
+  // If no direct hit, check metaball field at click point
+  if (!hit) {
+    const fx = Math.floor(mx / SCALE), fy = Math.floor(my / SCALE);
+    if (fx >= 0 && fx < sw && fy >= 0 && fy < sh) {
+      const v = field[fy * sw + fx];
+      if (v > THRESHOLD) {
+        // find dominant ball at this point
+        let maxC = 0;
+        for (const b of balls) {
+          const dx = mx - b.x, dy = my - b.y;
+          const d2 = dx * dx + dy * dy;
+          const c = (b.r * b.r) / (d2 + 1);
+          if (c > maxC) { maxC = c; hit = b; }
+        }
+      }
+    }
+  }
+
+  if (hit) splitBall(hit);
+});
+
+// ── Init ──
+function resetAll() {
+  balls = [];
+  // Start as one big merged blob — pack many balls tightly in the center
+  // so they form a single organic metaball mass from the beginning
+  const cx = W / 2, cy = H / 2;
+  const configs = [
+    // core cluster — tightly packed, will merge into one form
+    { x: cx,           y: cy,           r: 68 },
+    { x: cx - 52,      y: cy - 20,      r: 60 },
+    { x: cx + 55,      y: cy - 18,      r: 58 },
+    { x: cx - 18,      y: cy - 58,      r: 55 },
+    { x: cx + 22,      y: cy + 52,      r: 56 },
+    { x: cx - 58,      y: cy + 36,      r: 52 },
+    { x: cx + 60,      y: cy + 30,      r: 50 },
+    { x: cx - 30,      y: cy + 78,      r: 48 },
+    { x: cx + 35,      y: cy - 72,      r: 50 },
+    { x: cx - 80,      y: cy - 55,      r: 44 },
+    { x: cx + 82,      y: cy - 48,      r: 46 },
+    { x: cx - 85,      y: cy + 60,      r: 42 },
+    { x: cx + 88,      y: cy + 55,      r: 44 },
+  ];
+  configs.forEach(s => {
+    const b = new Ball(s.x, s.y, s.r, 0, 0);
+    b.vx = (Math.random() - 0.5) * 0.3;
+    b.vy = (Math.random() - 0.5) * 0.3;
+    balls.push(b);
+  });
+}
+
+resetAll();
+
+// ── Loop ──
+function loop() {
+  balls.forEach(b => b.update());
+  renderMetaballs();
+  requestAnimationFrame(loop);
+}
+loop();
+
+window.addEventListener('resize', () => {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  initField();
+  resetAll();
+});
+</script>
+</body>
+</html>

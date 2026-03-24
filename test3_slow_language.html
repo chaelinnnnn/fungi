@@ -2,241 +2,308 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Test 3 — Slow Language</title>
+<title>Test 3 — Clay Typography</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg: #0d0f0a;
-    --dim: rgba(180,210,120,0.12);
-    --glow: rgba(160,200,90,0.85);
-    --mid: rgba(140,180,80,0.5);
-    --faint: rgba(120,160,70,0.2);
-  }
   body {
-    background: var(--bg);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    cursor: text;
+    background: #f0ece4;
+    width: 100vw; height: 100vh;
     overflow: hidden;
+    font-family: 'Courier New', monospace;
   }
-  canvas {
+  #c { display: block; position: fixed; inset: 0; }
+  #input-wrap {
     position: fixed;
-    inset: 0;
-    pointer-events: none;
-  }
-  #input-area {
-    position: fixed;
-    bottom: 60px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    z-index: 10;
+    bottom: 56px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; align-items: center; z-index: 10;
   }
   input {
     background: transparent;
     border: none;
-    border-bottom: 1px solid rgba(160,200,90,0.3);
-    color: rgba(160,200,90,0.7);
+    border-bottom: 1px solid rgba(30,26,20,0.25);
+    color: rgba(30,26,20,0.7);
     font-family: 'Courier New', monospace;
-    font-size: 13px;
-    letter-spacing: 0.18em;
-    padding: 6px 4px;
-    width: 260px;
-    outline: none;
+    font-size: 12px; letter-spacing: 0.18em;
+    padding: 6px 4px; width: 260px; outline: none;
     text-transform: uppercase;
-    caret-color: rgba(160,200,90,0.8);
+    caret-color: rgba(30,26,20,0.6);
   }
-  input::placeholder { color: rgba(160,200,90,0.2); }
+  input::placeholder { color: rgba(30,26,20,0.2); }
   button {
     background: transparent;
-    border: 1px solid rgba(160,200,90,0.25);
-    color: rgba(160,200,90,0.5);
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    padding: 6px 14px;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: all 0.3s;
-  }
-  button:hover { border-color: rgba(160,200,90,0.6); color: rgba(160,200,90,0.9); }
-  #title {
-    position: fixed; top: 32px; left: 40px;
-    font-family: 'Courier New', monospace;
-    font-size: 10px; letter-spacing: 0.2em;
-    color: rgba(160,200,90,0.2); text-transform: uppercase;
-  }
-  #timer {
-    position: fixed; top: 32px; right: 40px;
+    border: 1px solid rgba(30,26,20,0.18);
+    color: rgba(30,26,20,0.4);
     font-family: 'Courier New', monospace;
     font-size: 10px; letter-spacing: 0.15em;
-    color: rgba(160,200,90,0.25); text-transform: uppercase;
+    padding: 6px 14px; cursor: pointer; text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  button:hover { border-color: rgba(30,26,20,0.45); color: rgba(30,26,20,0.75); }
+  #title {
+    position: fixed; top: 32px; left: 40px;
+    font-size: 10px; letter-spacing: 0.2em;
+    color: rgba(30,26,20,0.2); text-transform: uppercase; z-index: 10;
   }
   #hint {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-    font-family: 'Courier New', monospace;
     font-size: 10px; letter-spacing: 0.2em;
-    color: rgba(160,200,90,0.18); text-transform: uppercase;
-    white-space: nowrap;
+    color: rgba(30,26,20,0.18); text-transform: uppercase;
+    white-space: nowrap; z-index: 10;
+  }
+  #loading {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; letter-spacing: 0.25em; color: rgba(30,26,20,0.3);
+    text-transform: uppercase; z-index: 20; background: #f0ece4;
+    transition: opacity 0.6s;
   }
 </style>
 </head>
 <body>
-<div id="title">Test 03 — Slow Language</div>
-<div id="timer">Growing...</div>
+<div id="title">Test 03 — Clay Typography</div>
+<div id="loading">Loading font...</div>
 <canvas id="c"></canvas>
-<div id="input-area">
-  <input id="wordInput" type="text" placeholder="type a sentence..." maxlength="60" />
-  <button onclick="startGrow()">PLANT</button>
-  <button onclick="clearAll()">CLEAR</button>
+<div id="input-wrap">
+  <input id="textInput" type="text" placeholder="type anything..." maxlength="20" />
+  <button onclick="clearAll()">Clear</button>
 </div>
-<div id="hint">Language grows at the speed of fungi — type and wait</div>
+<div id="hint">Type to generate clay letters — drag to rotate</div>
 
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Renderer ──
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
 
-let queue = [];       // characters waiting to be drawn
-let rendered = [];    // fully grown characters with their thread trails
-let growing = false;
-let startTime = null;
-let currentX = 0;
-let currentY = canvas.height / 2;
-let lineStartX = 0;
-const CHAR_DELAY = 1400; // ms per character — fungi speed
-const FONT_SIZE = 52;
-const LINE_MAX_WIDTH = canvas.width * 0.72;
-const LINE_START_X = canvas.width * 0.14;
+// ── Scene ──
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#f0ece4');
 
-function startGrow() {
-  const text = document.getElementById('wordInput').value.trim();
-  if (!text) return;
-  clearAll();
-  queue = text.toUpperCase().split('');
-  currentX = LINE_START_X;
-  lineStartX = LINE_START_X;
-  currentY = canvas.height / 2;
-  growing = true;
-  startTime = Date.now();
-  growNext();
-}
+// ── Camera ──
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 2, 16);
 
-function growNext() {
-  if (queue.length === 0) { growing = false; return; }
-  const ch = queue.shift();
-  const elapsed = Math.round((Date.now() - startTime) / 1000);
-  document.getElementById('timer').textContent = `+${elapsed}s`;
+// ── Controls ──
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.enableZoom = false;
+controls.enablePan = false;
+controls.minPolarAngle = Math.PI * 0.28;
+controls.maxPolarAngle = Math.PI * 0.62;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.target.set(0, 0, 0);
 
-  // Wrap line
-  if (ch !== ' ' && currentX > LINE_START_X + LINE_MAX_WIDTH - FONT_SIZE) {
-    currentY += FONT_SIZE * 1.8;
-    currentX = LINE_START_X;
-  }
+// ── Lights ──
+scene.add(new THREE.AmbientLight('#fff8f0', 0.85));
 
-  drawCharGrow(ch, currentX, currentY, () => {
-    rendered.push({ ch, x: currentX, y: currentY });
-    if (ch === ' ') currentX += FONT_SIZE * 0.45;
-    else currentX += FONT_SIZE * 0.72;
-    setTimeout(growNext, CHAR_DELAY);
+const key = new THREE.DirectionalLight('#fffaf0', 2.8);
+key.position.set(5, 12, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 1;
+key.shadow.camera.far  = 50;
+key.shadow.camera.left = key.shadow.camera.bottom = -16;
+key.shadow.camera.right = key.shadow.camera.top  =  16;
+key.shadow.radius = 10;
+key.shadow.bias = -0.001;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight('#b8d0ff', 1.0);
+fill.position.set(-8, 3, -3);
+scene.add(fill);
+
+const rim = new THREE.DirectionalLight('#ffc8a0', 0.55);
+rim.position.set(0, -5, -8);
+scene.add(rim);
+
+// Shadow ground
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 80),
+  new THREE.ShadowMaterial({ opacity: 0.07 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -2.4;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ── Clay color palette ──
+const PALETTE = [
+  '#e05c52', '#f5a020', '#6dbf4a',
+  '#4a8fe0', '#c44fcf', '#f07898',
+  '#f0c030', '#3bbfb8', '#e8783c',
+  '#8060d0',
+];
+
+function makeClay(hex) {
+  const c = new THREE.Color(hex);
+  return new THREE.MeshStandardMaterial({
+    color: c,
+    roughness: 0.78,
+    metalness: 0.0,
+    emissive: c.clone().multiplyScalar(0.04),
   });
 }
 
-function drawCharGrow(ch, x, y, done) {
-  if (ch === ' ') { done(); return; }
+// ── State ──
+let font    = null;
+let letters = [];
+let colorIdx = 0;
+let lastText = '';
 
-  // Step 1: draw mycelium threads first
-  const threadCount = 6 + Math.floor(Math.random() * 6);
-  for (let i = 0; i < threadCount; i++) {
-    drawThread(x + FONT_SIZE * 0.3, y, i, threadCount);
+const COLS     = 8;
+const SIZE     = 1.15;
+const GAP_X    = 1.7;
+const GAP_Y    = 2.3;
+
+// ── Load font ──
+new FontLoader().load(
+  'https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json',
+  f => {
+    font = f;
+    const el = document.getElementById('loading');
+    el.style.opacity = '0';
+    setTimeout(() => el.style.display = 'none', 600);
+    document.getElementById('textInput').focus();
   }
+);
 
-  // Step 2: fade in the character slowly
-  let alpha = 0;
-  const duration = 900;
-  const start = performance.now();
+// ── Add one letter ──
+function spawnLetter(char) {
+  if (!font || char === ' ') return;
 
-  function fadeIn(now) {
-    alpha = Math.min(1, (now - start) / duration);
-    redrawStatic();
-    // Draw current fading char
-    ctx.save();
-    ctx.font = `300 ${FONT_SIZE}px 'Courier New', monospace`;
-    ctx.fillStyle = `rgba(160,200,90,${alpha * 0.88})`;
-    ctx.shadowColor = `rgba(160,200,90,${alpha * 0.4})`;
-    ctx.shadowBlur = 14;
-    ctx.fillText(ch, x, y);
-    ctx.restore();
-    if (alpha < 1) requestAnimationFrame(fadeIn);
-    else done();
-  }
-  requestAnimationFrame(fadeIn);
-}
-
-function drawThread(ox, oy, index, total) {
-  const angle = (index / total) * Math.PI * 2 + Math.random() * 0.5;
-  const length = 18 + Math.random() * 40;
-  const steps = Math.floor(length / 3);
-  let cx = ox, cy = oy, a = angle;
-
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  for (let s = 0; s < steps; s++) {
-    a += (Math.random() - 0.5) * 0.6;
-    cx += Math.cos(a) * 3;
-    cy += Math.sin(a) * 3;
-    ctx.lineTo(cx, cy);
-  }
-  const alpha = 0.08 + Math.random() * 0.18;
-  ctx.strokeStyle = `rgba(160,200,90,${alpha})`;
-  ctx.lineWidth = 0.6 + Math.random() * 0.8;
-  ctx.stroke();
-
-  // spore dot at tip
-  if (Math.random() < 0.4) {
-    ctx.beginPath();
-    ctx.arc(cx, cy, 1 + Math.random() * 1.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(160,200,90,${alpha * 1.5})`;
-    ctx.fill();
-  }
-}
-
-function redrawStatic() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  rendered.forEach(r => {
-    ctx.save();
-    ctx.font = `300 ${FONT_SIZE}px 'Courier New', monospace`;
-    ctx.fillStyle = `rgba(160,200,90,0.88)`;
-    ctx.shadowColor = `rgba(160,200,90,0.3)`;
-    ctx.shadowBlur = 12;
-    ctx.fillText(r.ch, r.x, r.y);
-    ctx.restore();
+  const geo = new TextGeometry(char.toUpperCase(), {
+    font,
+    size:           SIZE,
+    height:         0.52,
+    curveSegments:  16,
+    bevelEnabled:   true,
+    bevelThickness: 0.20,
+    bevelSize:      0.13,
+    bevelOffset:    0,
+    bevelSegments:  12,
   });
+
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  geo.translate(-(bb.max.x - bb.min.x) / 2, 0, 0);
+
+  const hex  = PALETTE[colorIdx % PALETTE.length];
+  colorIdx++;
+
+  const mesh = new THREE.Mesh(geo, makeClay(hex));
+  mesh.castShadow    = true;
+  mesh.receiveShadow = true;
+  mesh.userData      = { tx: 0, ty: 0, tz: 0, born: Date.now() };
+
+  // drop from above
+  mesh.position.set(0, 8, 0);
+  mesh.rotation.set(-0.4, (Math.random()-0.5)*0.3, (Math.random()-0.5)*0.25);
+  scene.add(mesh);
+  letters.push(mesh);
+  repositionAll();
 }
 
-function clearAll() {
-  queue = [];
-  rendered = [];
-  growing = false;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  document.getElementById('timer').textContent = 'Growing...';
-  currentX = LINE_START_X;
-  currentY = canvas.height / 2;
+// ── Recompute grid positions ──
+function repositionAll() {
+  const n    = letters.length;
+  const cols = Math.min(n, COLS);
+  const rows = Math.ceil(n / COLS);
+  const totalW = (cols - 1) * GAP_X;
+  const totalH = (rows - 1) * GAP_Y;
+
+  letters.forEach((m, i) => {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    m.userData.tx = -totalW / 2 + col * GAP_X;
+    m.userData.ty =  totalH / 2 - row * GAP_Y;
+    m.userData.tz = 0;
+  });
+
+  // Frame camera on the grid
+  const targetY = (rows > 1) ? -(totalH / 2) * 0.3 : 0;
+  controls.target.lerp(new THREE.Vector3(0, targetY, 0), 0.08);
 }
 
-document.getElementById('wordInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') startGrow();
+// ── Remove last letter ──
+function removeLast() {
+  const m = letters.pop();
+  if (!m) return;
+  scene.remove(m);
+  m.geometry.dispose();
+  m.material.dispose();
+  colorIdx = Math.max(0, colorIdx - 1);
+  repositionAll();
+}
+
+// ── Clear ──
+window.clearAll = () => {
+  letters.forEach(m => {
+    scene.remove(m);
+    m.geometry.dispose();
+    m.material.dispose();
+  });
+  letters   = [];
+  colorIdx  = 0;
+  lastText  = '';
+  document.getElementById('textInput').value = '';
+};
+
+// ── Input ──
+document.getElementById('textInput').addEventListener('input', e => {
+  const text = e.target.value;
+  if (text.length > lastText.length) {
+    spawnLetter(text[text.length - 1]);
+  } else {
+    removeLast();
+  }
+  lastText = text;
 });
+
+// ── Spring animate each letter ──
+function animateLetter(m) {
+  const { tx, ty, tz } = m.userData;
+  m.position.x += (tx - m.position.x) * 0.10;
+  m.position.y += (ty - m.position.y) * 0.09;
+  m.position.z += (tz - m.position.z) * 0.10;
+  m.rotation.x += (0  - m.rotation.x) * 0.08;
+  m.rotation.y += (0  - m.rotation.y) * 0.08;
+  m.rotation.z += (0  - m.rotation.z) * 0.08;
+}
+
+// ── Render loop ──
+(function loop() {
+  requestAnimationFrame(loop);
+  controls.update();
+  letters.forEach(animateLetter);
+  renderer.render(scene, camera);
+})();
+
+// ── Resize ──
 window.addEventListener('resize', () => {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  redrawStatic();
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
 </script>
 </body>

@@ -2,339 +2,231 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Test 2 — Decomposition as Language</title>
+<title>Test 2 — Blob Colony</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  :root {
-    --bg: #f5f0e8;
-    --ink: #1a1a14;
-    --spore: #5a6b2a;
-    --decay: #8b7355;
-    --mold: #7a9b4a;
-  }
-
-  body {
-    background: var(--bg);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Georgia', serif;
-    overflow: hidden;
-    cursor: crosshair;
-  }
-
-  #stage {
-    position: relative;
-    width: 780px;
-    max-width: 96vw;
-    padding: 60px 0;
-  }
-
-  .text-block {
-    font-size: clamp(18px, 2.4vw, 26px);
-    line-height: 2.4;
-    color: var(--ink);
-    user-select: none;
-  }
-
-  .word {
-    display: inline-block;
-    cursor: pointer;
-    position: relative;
-    margin: 0 3px;
-    vertical-align: middle;
-  }
-
-  .word-text {
-    display: inline-block;
-    transition: opacity 0.35s, transform 0.35s;
-  }
-
-  .circles {
-    display: none;
-    align-items: center;
-    gap: 4px;
-    vertical-align: middle;
-  }
-
-  .circle {
-    border-radius: 50%;
-    display: inline-block;
-    flex-shrink: 0;
-    transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
-    opacity: 0;
-    transform: scale(0);
-  }
-
-  .recomposed-text {
-    color: var(--mold);
-    font-style: italic;
-    animation: emerge 1s ease forwards;
-    opacity: 0;
-  }
-
-  @keyframes emerge {
-    0%   { opacity: 0; transform: translateY(5px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
-
-  .spore-particle {
-    position: fixed;
-    pointer-events: none;
-    border-radius: 50%;
-    opacity: 0;
-    animation: sporeFloat 2.5s ease-out forwards;
-  }
-
-  @keyframes sporeFloat {
-    0%   { opacity: 0.7; transform: translate(0,0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.1); }
-  }
-
-  #instruction {
-    position: fixed;
-    bottom: 32px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    color: rgba(26,26,20,0.3);
-    text-transform: uppercase;
-    white-space: nowrap;
-  }
-
-  #reset-btn {
-    position: fixed;
-    top: 32px;
-    right: 36px;
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(26,26,20,0.3);
-    background: none;
-    border: 1px solid rgba(26,26,20,0.15);
-    padding: 6px 14px;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  #reset-btn:hover { color: var(--spore); border-color: var(--spore); }
-
+  body { background: #7a7a7a; width: 100vw; height: 100vh; overflow: hidden; cursor: crosshair; }
+  canvas { display: block; position: fixed; inset: 0; }
   #title {
-    position: fixed;
-    top: 34px;
-    left: 40px;
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    color: rgba(26,26,20,0.25);
-    text-transform: uppercase;
+    position: fixed; top: 32px; left: 40px;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    letter-spacing: 0.2em; color: rgba(255,255,255,0.25);
+    text-transform: uppercase; z-index: 10; pointer-events: none;
   }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      radial-gradient(ellipse at 20% 80%, rgba(122,155,74,0.04) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(90,107,42,0.04) 0%, transparent 60%);
-    pointer-events: none;
+  #hint {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    font-family: 'Courier New', monospace; font-size: 10px;
+    letter-spacing: 0.2em; color: rgba(255,255,255,0.18);
+    text-transform: uppercase; white-space: nowrap; z-index: 10; pointer-events: none;
   }
+  #reset-btn {
+    position: fixed; top: 28px; right: 36px;
+    font-family: 'Courier New', monospace; font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: rgba(255,255,255,0.25); background: none;
+    border: 1px solid rgba(255,255,255,0.14);
+    padding: 6px 14px; cursor: pointer; transition: all 0.3s; z-index: 10;
+  }
+  #reset-btn:hover { color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.4); }
 </style>
 </head>
 <body>
-
-<div id="title">Test 02 — Decomposition as Language</div>
-<button id="reset-btn" onclick="resetAll()">Regenerate</button>
-
-<div id="stage">
-  <div class="text-block" id="textBlock"></div>
-</div>
-
-<div id="instruction">Click words — letters decompose into circles, then new language emerges</div>
+<div id="title">Test 02 — Blob Colony</div>
+<canvas id="c"></canvas>
+<button id="reset-btn" onclick="resetAll()">Clear</button>
+<div id="hint">Click to spawn — blobs merge with gradient, separate with own color</div>
 
 <script>
-const textFragments = [
-  "Fungi do not move. Yet they connect everything around them through invisible threads beneath the surface.",
-  "Decomposition is not an ending. It is the condition for new creation, the grammar of transformation.",
-  "They communicate without words, without mouths, without a center — a language older than speech.",
-  "The mycelium reads the soil, translates chemical signals into growth, rewrites the forest floor.",
-  "What dissolves becomes something else. The letter breaks apart. The meaning disperses, then reassembles."
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W = canvas.width  = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+
+// Render at half resolution for performance, then scale up
+const SCALE = 2;
+let sw = Math.ceil(W / SCALE);
+let sh = Math.ceil(H / SCALE);
+
+// ── Color palette: [r, g, b] ──
+const PALETTE = [
+  [232, 120, 152], // pink
+  [240, 128,  80], // orange
+  [200, 136, 216], // purple
+  [240, 100, 100], // coral
+  [216, 160, 216], // lavender
+  [245, 160, 100], // amber
 ];
-
-const recomposedPool = [
-  "mycelium", "spore", "network", "dissolve", "signal",
-  "root", "decay", "grow", "connect", "translate",
-  "invisible", "thread", "chemical", "pulse", "emerge"
-];
-
-const CIRCLE_BASE = 11;
-
-const circleColors = [
-  '#1a1a14',
-  '#6b5a3a',
-  '#8b7355',
-  '#7a9b4a',
-  '#a3c45e',
-  '#c8e68a',
-];
-
-function buildText() {
-  const container = document.getElementById('textBlock');
-  container.innerHTML = '';
-
-  const fragment = textFragments[Math.floor(Math.random() * textFragments.length)];
-  const words = fragment.split(' ');
-
-  words.forEach((w, i) => {
-    const wordSpan = document.createElement('span');
-    wordSpan.className = 'word';
-    wordSpan.dataset.state = '0';
-    wordSpan.dataset.original = w;
-
-    const textEl = document.createElement('span');
-    textEl.className = 'word-text';
-    textEl.textContent = w;
-
-    const circleRow = document.createElement('span');
-    circleRow.className = 'circles';
-    circleRow.style.display = 'none';
-
-    const letterCount = Math.max(w.replace(/[^a-zA-Z]/g, '').length, 1);
-    for (let c = 0; c < letterCount; c++) {
-      const circle = document.createElement('span');
-      circle.className = 'circle';
-      circle.style.width = CIRCLE_BASE + 'px';
-      circle.style.height = CIRCLE_BASE + 'px';
-      circle.style.background = circleColors[0];
-      circleRow.appendChild(circle);
-    }
-
-    wordSpan.appendChild(textEl);
-    wordSpan.appendChild(circleRow);
-    wordSpan.addEventListener('click', (e) => handleClick(wordSpan, e));
-
-    container.appendChild(wordSpan);
-    if (i < words.length - 1) container.appendChild(document.createTextNode(' '));
-  });
+let colorIdx = 0;
+function nextColor() {
+  const c = PALETTE[colorIdx % PALETTE.length];
+  colorIdx++;
+  return c;
 }
 
-function handleClick(wordSpan, e) {
-  const state = parseInt(wordSpan.dataset.state);
-  const textEl = wordSpan.querySelector('.word-text');
-  const circleRow = wordSpan.querySelector('.circles');
-  const circles = circleRow.querySelectorAll('.circle');
+// ── Blob ──
+let blobs = [];
 
-  if (state === 0) {
-    // text → circles
-    textEl.style.opacity = '0';
-    textEl.style.transform = 'scale(0.8)';
-    setTimeout(() => {
-      textEl.style.display = 'none';
-      circleRow.style.display = 'inline-flex';
-      circles.forEach((c, i) => {
-        setTimeout(() => {
-          c.style.opacity = '1';
-          c.style.transform = 'scale(1)';
-          c.style.background = circleColors[1];
-        }, i * 55);
-      });
-    }, 300);
-    wordSpan.dataset.state = '1';
-    spawnSpores(e.clientX, e.clientY, 1);
+class Blob {
+  constructor(x, y, r, color) {
+    this.x     = x;
+    this.y     = y;
+    this.r     = r;
+    this.color = color; // [r,g,b]
+    this.vx    = (Math.random() - 0.5) * 1.1;
+    this.vy    = (Math.random() - 0.5) * 1.1;
+    this.wobble = Math.random() * Math.PI * 2;
+    this.wobbleSpeed = 0.007 + Math.random() * 0.007;
+  }
 
-  } else if (state >= 1 && state < 5) {
-    const nextState = state + 1;
-    wordSpan.dataset.state = nextState;
-    circles.forEach((c, i) => {
-      setTimeout(() => {
-        const size = CIRCLE_BASE * (0.7 + nextState * 0.22) + Math.random() * 5;
-        c.style.width = size + 'px';
-        c.style.height = size + 'px';
-        c.style.background = circleColors[Math.min(nextState, circleColors.length - 1)];
-        c.style.opacity = String(Math.max(0.15, 1 - nextState * 0.14));
-        c.style.marginLeft = (Math.random() * nextState * 3) + 'px';
-        c.style.marginRight = (Math.random() * nextState * 2) + 'px';
-      }, i * 60);
-    });
-    spawnSpores(e.clientX, e.clientY, nextState);
+  update() {
+    this.wobble += this.wobbleSpeed;
+    this.vx += (Math.random() - 0.5) * 0.055;
+    this.vy += (Math.random() - 0.5) * 0.055;
+    this.vx *= 0.965;
+    this.vy *= 0.965;
+    this.x  += this.vx + Math.sin(this.wobble) * 0.18;
+    this.y  += this.vy + Math.cos(this.wobble * 0.75) * 0.18;
 
-    if (nextState >= 5) {
-      setTimeout(() => recompose(wordSpan, textEl, circleRow, circles), 700);
-    }
-
-  } else if (state === 6) {
-    resetWord(wordSpan, textEl, circleRow, circles);
+    const pad = this.r * 0.5;
+    if (this.x < pad)     { this.x = pad;     this.vx =  Math.abs(this.vx) * 0.6; }
+    if (this.x > W - pad) { this.x = W - pad; this.vx = -Math.abs(this.vx) * 0.6; }
+    if (this.y < pad)     { this.y = pad;     this.vy =  Math.abs(this.vy) * 0.6; }
+    if (this.y > H - pad) { this.y = H - pad; this.vy = -Math.abs(this.vy) * 0.6; }
   }
 }
 
-function recompose(wordSpan, textEl, circleRow, circles) {
-  circles.forEach((c, i) => {
-    setTimeout(() => {
-      c.style.opacity = '0';
-      c.style.transform = 'scale(0)';
-    }, i * 40);
-  });
+// ── Per-pixel metaball renderer ──
+const THRESHOLD = 1.0;
+// background gray
+const BG = [122, 122, 122];
 
-  setTimeout(() => {
-    circleRow.style.display = 'none';
-    const newWord = recomposedPool[Math.floor(Math.random() * recomposedPool.length)];
-    textEl.textContent = newWord;
-    textEl.className = 'word-text recomposed-text';
-    textEl.style.display = '';
-    textEl.style.opacity = '';
-    textEl.style.transform = '';
-    wordSpan.dataset.state = '6';
-  }, circles.length * 40 + 200);
+function render() {
+  const img  = ctx.createImageData(W, H);
+  const data = img.data;
+
+  for (let py = 0; py < sh; py++) {
+    for (let px = 0; px < sw; px++) {
+      const wx = px * SCALE;
+      const wy = py * SCALE;
+
+      // compute per-blob contribution at this pixel
+      let totalField = 0;
+      let weightedR  = 0;
+      let weightedG  = 0;
+      let weightedB  = 0;
+
+      for (const b of blobs) {
+        const dx = wx - b.x;
+        const dy = wy - b.y;
+        const d2 = dx*dx + dy*dy;
+        const f  = (b.r * b.r) / (d2 + 0.0001);
+        totalField += f;
+        // weight color by contribution
+        weightedR  += f * b.color[0];
+        weightedG  += f * b.color[1];
+        weightedB  += f * b.color[2];
+      }
+
+      let pr, pg, pb, pa;
+
+      if (totalField >= THRESHOLD) {
+        // inside metaball — blend colors weighted by field contribution
+        pr = Math.min(255, weightedR / totalField);
+        pg = Math.min(255, weightedG / totalField);
+        pb = Math.min(255, weightedB / totalField);
+        pa = 255;
+      } else if (totalField >= THRESHOLD * 0.55) {
+        // soft edge zone — blend between blob color and bg
+        const t  = (totalField - THRESHOLD * 0.55) / (THRESHOLD * 0.45);
+        const et = t * t * (3 - 2 * t); // smoothstep
+        pr = BG[0] + (Math.min(255, weightedR / Math.max(totalField, 0.0001)) - BG[0]) * et;
+        pg = BG[1] + (Math.min(255, weightedG / Math.max(totalField, 0.0001)) - BG[1]) * et;
+        pb = BG[2] + (Math.min(255, weightedB / Math.max(totalField, 0.0001)) - BG[2]) * et;
+        pa = 255;
+      } else {
+        pr = BG[0]; pg = BG[1]; pb = BG[2]; pa = 255;
+      }
+
+      // stamp SCALE×SCALE block
+      for (let dy = 0; dy < SCALE && wy + dy < H; dy++) {
+        for (let dx = 0; dx < SCALE && wx + dx < W; dx++) {
+          const i = ((wy + dy) * W + (wx + dx)) * 4;
+          data[i]   = pr;
+          data[i+1] = pg;
+          data[i+2] = pb;
+          data[i+3] = pa;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
 }
 
-function resetWord(wordSpan, textEl, circleRow, circles) {
-  textEl.className = 'word-text';
-  textEl.textContent = wordSpan.dataset.original;
-  textEl.style.display = '';
-  textEl.style.opacity = '1';
-  textEl.style.transform = '';
-  circleRow.style.display = 'none';
-  circles.forEach(c => {
-    c.style.width = CIRCLE_BASE + 'px';
-    c.style.height = CIRCLE_BASE + 'px';
-    c.style.background = circleColors[0];
-    c.style.opacity = '0';
-    c.style.transform = 'scale(0)';
-    c.style.marginLeft = '';
-    c.style.marginRight = '';
-  });
-  wordSpan.dataset.state = '0';
-}
+// ── Spawn colony ──
+function spawnAt(x, y) {
+  const color   = nextColor();
+  const bodyR   = 22 + Math.random() * 48;
+  blobs.push(new Blob(x, y, bodyR, color));
 
-function spawnSpores(cx, cy, intensity) {
-  const count = intensity * 4 + 3;
-  for (let i = 0; i < count; i++) {
-    const s = document.createElement('div');
-    s.className = 'spore-particle';
-    const size = 3 + Math.random() * 5;
-    s.style.width = size + 'px';
-    s.style.height = size + 'px';
-    s.style.left = cx + 'px';
-    s.style.top = cy + 'px';
-    s.style.background = circleColors[Math.min(intensity, circleColors.length - 1)];
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 30 + Math.random() * 90;
-    s.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
-    s.style.setProperty('--dy', Math.sin(angle) * dist - 50 + 'px');
-    s.style.animationDelay = Math.random() * 0.2 + 's';
-    document.body.appendChild(s);
-    setTimeout(() => s.remove(), 3000);
+  // satellite blobs — same or alternate color
+  const satCount = 1 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < satCount; i++) {
+    const angle  = (i / satCount) * Math.PI * 2 + Math.random() * 0.8;
+    const dist   = bodyR * (0.9 + Math.random() * 1.0);
+    const sr     = bodyR * (0.14 + Math.random() * 0.42);
+    // alternate between same color and neighboring palette color
+    const satColor = Math.random() < 0.5
+      ? color
+      : PALETTE[(PALETTE.indexOf(color) + 1 + Math.floor(Math.random()*(PALETTE.length-1))) % PALETTE.length];
+    const b = new Blob(
+      x + Math.cos(angle) * dist,
+      y + Math.sin(angle) * dist,
+      sr,
+      satColor
+    );
+    b.vx = Math.cos(angle) * (0.4 + Math.random() * 0.6);
+    b.vy = Math.sin(angle) * (0.4 + Math.random() * 0.6);
+    blobs.push(b);
   }
 }
 
-function resetAll() { buildText(); }
+// ── Interaction ──
+let painting = false, lastPaint = 0;
+canvas.addEventListener('click', e => {
+  if (e.target.id === 'reset-btn') return;
+  const r = canvas.getBoundingClientRect();
+  spawnAt(e.clientX - r.left, e.clientY - r.top);
+});
+canvas.addEventListener('mousedown', () => painting = true);
+canvas.addEventListener('mouseup',   () => painting = false);
+canvas.addEventListener('mousemove', e => {
+  if (!painting) return;
+  const now = Date.now();
+  if (now - lastPaint < 400) return;
+  lastPaint = now;
+  const r = canvas.getBoundingClientRect();
+  spawnAt(e.clientX - r.left, e.clientY - r.top);
+});
 
-buildText();
+window.resetAll = () => { blobs = []; colorIdx = 0; };
+
+// ── Start empty ──
+
+// ── Loop ──
+function loop() {
+  blobs.forEach(b => b.update());
+  render();
+  requestAnimationFrame(loop);
+}
+loop();
+
+window.addEventListener('resize', () => {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  sw = Math.ceil(W / SCALE);
+  sh = Math.ceil(H / SCALE);
+});
 </script>
 </body>
 </html>

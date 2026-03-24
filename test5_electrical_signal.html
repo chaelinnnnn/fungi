@@ -2,291 +2,324 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Test 5 — Colony Signal</title>
+<title>Test 5 — Assembly / Dissolution</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #f8f6f2;
+    background: #080808;
     width: 100vw; height: 100vh;
-    overflow: hidden;
-    cursor: crosshair;
+    overflow: hidden; cursor: crosshair;
   }
   canvas { display: block; position: fixed; inset: 0; }
   #title {
     position: fixed; top: 32px; left: 40px;
     font-family: 'Courier New', monospace;
     font-size: 10px; letter-spacing: 0.2em;
-    color: rgba(20,20,20,0.2); text-transform: uppercase;
+    color: rgba(255,255,255,0.15); text-transform: uppercase;
     z-index: 10; pointer-events: none;
+  }
+  #mode-label {
+    position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 0.28em;
+    color: rgba(255,255,255,0.2); text-transform: uppercase;
+    z-index: 10; pointer-events: none;
+    transition: opacity 0.5s;
   }
   #hint {
     position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
     font-family: 'Courier New', monospace;
     font-size: 10px; letter-spacing: 0.2em;
-    color: rgba(20,20,20,0.18); text-transform: uppercase;
+    color: rgba(255,255,255,0.1); text-transform: uppercase;
     white-space: nowrap; z-index: 10; pointer-events: none;
   }
-  #reset-btn {
-    position: fixed; top: 28px; right: 36px;
-    font-family: 'Courier New', monospace;
-    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
-    color: rgba(20,20,20,0.22); background: none;
-    border: 1px solid rgba(20,20,20,0.12);
-    padding: 6px 14px; cursor: pointer; transition: all 0.3s; z-index: 10;
-  }
-  #reset-btn:hover { color: rgba(20,20,20,0.7); border-color: rgba(20,20,20,0.35); }
 </style>
 </head>
 <body>
-<div id="title">Test 05 — Colony Signal</div>
+<div id="title">Test 05 — Assembly / Dissolution</div>
 <canvas id="c"></canvas>
-<button id="reset-btn" onclick="resetAll()">Clear</button>
-<div id="hint">Click anywhere to grow a colony — clusters drift and accumulate</div>
+<div id="mode-label">— circle —</div>
+<div id="hint">Click to dissolve and reform</div>
 
 <script>
 const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let W = canvas.width = window.innerWidth;
+const ctx    = canvas.getContext('2d');
+let W = canvas.width  = window.innerWidth;
 let H = canvas.height = window.innerHeight;
+const modeLabel = document.getElementById('mode-label');
 
-// ── Colony: a cluster of nodes at a position ──
-let colonies = [];
-let nodes = [];    // individual spiral nodes
-let connections = []; // thin arcs connecting nearby colonies
+const CX = () => W / 2;
+const CY = () => H / 2;
+const R  = () => Math.min(W, H) * 0.33;
 
-class SpiralNode {
-  constructor(x, y, r, parentId) {
-    this.x = x;
-    this.y = y;
-    this.r = r;
-    this.parentId = parentId;
-    this.vx = (Math.random() - 0.5) * 0.5;
-    this.vy = (Math.random() - 0.5) * 0.5;
-    this.age = 0;
-    this.maxAge = 900 + Math.random() * 600;
-    this.spiralLines = buildSpiralLines(r);
-    this.rotation = Math.random() * Math.PI * 2;
-    this.rotSpeed = (Math.random() - 0.5) * 0.003;
-    this.alive = true;
+// ── Themes: circle bg color + particle color ──
+const THEMES = [
+  { circleBg: [8,   8,   8  ], fg: [255, 255, 255], name: '— circle —'      },
+  { circleBg: [230, 224, 208], fg: [20,  18,  14 ], name: '— phyllotaxis —' },
+  { circleBg: [12,  20,  36 ], fg: [150, 205, 255], name: '— spiral —'      },
+  { circleBg: [36,  12,  12 ], fg: [255, 175, 120], name: '— rings —'       },
+  { circleBg: [12,  28,  18 ], fg: [130, 225, 160], name: '— grid —'        },
+  { circleBg: [22,  12,  32 ], fg: [205, 155, 255], name: '— cloud —'       },
+];
+
+// ── Formation builders (all positions inside the circle) ──
+const PARTICLE_COUNT = 1800;
+
+function formCircle() {
+  const cx = CX(), cy = CY(), r = R();
+  return Array.from({length: PARTICLE_COUNT}, (_, i) => {
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const angle  = i * golden;
+    const rad    = Math.sqrt(i / PARTICLE_COUNT) * r * 0.98;
+    return { x: cx + Math.cos(angle) * rad, y: cy + Math.sin(angle) * rad };
+  });
+}
+
+function formPhyllotaxis() {
+  const cx = CX(), cy = CY(), r = R();
+  return Array.from({length: PARTICLE_COUNT}, (_, i) => {
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const angle  = i * golden;
+    const t      = i / PARTICLE_COUNT;
+    const rad    = Math.sqrt(t) * r * 0.97;
+    const noisy  = rad + Math.sin(angle * 7 + t * 22) * r * 0.07;
+    return { x: cx + Math.cos(angle) * noisy, y: cy + Math.sin(angle) * noisy };
+  });
+}
+
+function formSpiral() {
+  const cx = CX(), cy = CY(), r = R();
+  return Array.from({length: PARTICLE_COUNT}, (_, i) => {
+    const t     = i / PARTICLE_COUNT;
+    const angle = t * Math.PI * 2 * 8;
+    const rad   = t * r * 0.96 + (Math.random() - 0.5) * r * 0.04;
+    return { x: cx + Math.cos(angle) * rad, y: cy + Math.sin(angle) * rad };
+  });
+}
+
+function formRings() {
+  const cx = CX(), cy = CY(), r = R();
+  const RINGS = 5;
+  return Array.from({length: PARTICLE_COUNT}, (_, i) => {
+    const ringIdx = i % RINGS;
+    const rad     = r * (0.18 + ringIdx * 0.175) + (Math.random() - 0.5) * r * 0.03;
+    const angle   = (i / PARTICLE_COUNT) * Math.PI * 2 * RINGS + ringIdx * 0.7;
+    return { x: cx + Math.cos(angle) * rad, y: cy + Math.sin(angle) * rad };
+  });
+}
+
+function formGrid() {
+  const cx = CX(), cy = CY(), r = R();
+  const cols = Math.ceil(Math.sqrt(PARTICLE_COUNT));
+  const step = (r * 1.92) / cols;
+  const startX = cx - r * 0.96;
+  const startY = cy - r * 0.96;
+  const pts = [];
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = startX + col * step + (Math.random() - 0.5) * step * 0.3;
+    const y = startY + row * step + (Math.random() - 0.5) * step * 0.3;
+    // keep inside circle
+    const dx = x - cx, dy = y - cy;
+    const d  = Math.sqrt(dx*dx + dy*dy);
+    if (d < r * 0.97) pts.push({x, y});
+    else pts.push({ x: cx + (dx/d)*r*0.9, y: cy + (dy/d)*r*0.9 });
+  }
+  return pts;
+}
+
+function formCloud() {
+  const cx = CX(), cy = CY(), r = R();
+  return Array.from({length: PARTICLE_COUNT}, () => {
+    const angle = Math.random() * Math.PI * 2;
+    const rad   = Math.pow(Math.random(), 0.55) * r * 0.96;
+    return { x: cx + Math.cos(angle) * rad, y: cy + Math.sin(angle) * rad };
+  });
+}
+
+const FORMATIONS = [formCircle, formPhyllotaxis, formSpiral, formRings, formGrid, formCloud];
+
+// ── Particles ──
+class Particle {
+  constructor(i) {
+    this.i     = i;
+    this.phase = Math.random() * Math.PI * 2;
+    this.dotR  = 0.7 + Math.random() * 1.5;
+    // start scattered inside circle
+    const angle = Math.random() * Math.PI * 2;
+    const rad   = Math.random() * R() * 0.9;
+    this.x  = CX() + Math.cos(angle) * rad;
+    this.y  = CY() + Math.sin(angle) * rad;
+    this.tx = this.x; this.ty = this.y;
+    this.sx = this.x; this.sy = this.y;
   }
 
-  update() {
-    this.age++;
-    this.rotation += this.rotSpeed;
-    this.vx += (Math.random() - 0.5) * 0.018;
-    this.vy += (Math.random() - 0.5) * 0.018;
-    this.vx *= 0.97;
-    this.vy *= 0.97;
-    this.x += this.vx;
-    this.y += this.vy;
-    // gentle boundary
-    if (this.x < 40) this.vx += 0.08;
-    if (this.x > W - 40) this.vx -= 0.08;
-    if (this.y < 40) this.vy += 0.08;
-    if (this.y > H - 40) this.vy -= 0.08;
+  setTarget(tx, ty) { this.tx = tx; this.ty = ty; }
 
-    if (this.age > this.maxAge) this.alive = false;
+  // scatter target: random position inside the circle
+  setScatter() {
+    const angle  = Math.random() * Math.PI * 2;
+    const rad    = Math.random() * R() * 0.88;
+    this.sx = CX() + Math.cos(angle) * rad;
+    this.sy = CY() + Math.sin(angle) * rad;
   }
 
-  draw() {
-    const lifeRatio = Math.min(1, this.age / 60); // fade in
-    const deathRatio = Math.max(0, 1 - (this.age - this.maxAge + 80) / 80); // fade out
-    const alpha = lifeRatio * deathRatio;
+  update(assembling, prog) {
+    const ease = x => x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2;
+    const stagger = Math.min(1, Math.max(0,
+      assembling
+        ? prog * 1.5 - (this.i / PARTICLE_COUNT) * 0.5
+        : prog * 1.5 - ((PARTICLE_COUNT - this.i) / PARTICLE_COUNT) * 0.45
+    ));
+    const e = ease(stagger) * 0.07;
+    const tx = assembling ? this.tx : this.sx;
+    const ty = assembling ? this.ty : this.sy;
+    this.x += (tx - this.x) * e;
+    this.y += (ty - this.y) * e;
+  }
 
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.rotation);
-
-    // Draw each spiral line with per-segment opacity:
-    // outer (t≈0) = more transparent, inner (t≈1) = more opaque → dark center
-    for (const line of this.spiralLines) {
-      const pts = line.pts;
-      ctx.lineWidth = line.width;
-      ctx.lineCap = 'round';
-      for (let i = 1; i < pts.length; i++) {
-        const t = pts[i].t; // 0=outer, 1=center
-        // darkest at center, fades to near-invisible at rim
-        const segAlpha = alpha * line.baseOpacity * (0.1 + t * t * 2.8);
-        ctx.beginPath();
-        ctx.moveTo(pts[i-1].x, pts[i-1].y);
-        ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.strokeStyle = `rgba(10,10,10,${segAlpha})`;
-        ctx.stroke();
-      }
-    }
-
-    // Outer ghost circle
+  draw(fgR, fgG, fgB, assembling, prog) {
+    const ease = x => x < 0.5 ? 2*x*x : 1 - Math.pow(-2*x+2, 2)/2;
+    const stagger = Math.min(1, Math.max(0,
+      assembling
+        ? prog * 1.5 - (this.i / PARTICLE_COUNT) * 0.5
+        : prog * 1.5 - ((PARTICLE_COUNT - this.i) / PARTICLE_COUNT) * 0.45
+    ));
+    const e     = ease(stagger);
+    const alpha = assembling ? 0.12 + e * 0.88 : (1 - e * 0.85);
     ctx.beginPath();
-    ctx.arc(0, 0, this.r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(10,10,10,${alpha * 0.06})`;
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    ctx.restore();
+    ctx.arc(this.x, this.y, this.dotR, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${fgR},${fgG},${fgB},${alpha})`;
+    ctx.fill();
   }
 }
 
-// Build spiral lines: dense dark center, fading bright outer edge
-function buildSpiralLines(r) {
-  const lines = [];
-  const lineCount = Math.floor(70 + Math.random() * 90);
+const particles = Array.from({length: PARTICLE_COUNT}, (_, i) => new Particle(i));
 
-  for (let i = 0; i < lineCount; i++) {
-    const baseAngle = (i / lineCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
-    const pts = [];
-    const steps = 50 + Math.floor(Math.random() * 30);
-    const maxR = r * (0.7 + Math.random() * 0.45);
-    const windFactor = 1.4 + Math.random() * 2.0;
+// ── State ──
+let themeIdx  = 0;
+let theme     = THEMES[0];
+let curBg     = [...THEMES[0].circleBg];
+let targetBg  = [...THEMES[0].circleBg];
 
-    for (let s = 0; s <= steps; s++) {
-      const t = s / steps; // t=0: outer edge, t=1: center
-      const dist = maxR * (1 - t);
-      const angle = baseAngle + t * Math.PI * windFactor;
-      pts.push({
-        x: Math.cos(angle) * dist,
-        y: Math.sin(angle) * dist,
-        // opacity fades OUT toward center — bright outer, dark inner accumulation
-        // We encode per-point opacity: high at outer (t~0), low at center (t~1)
-        // But we draw the whole line at once, so we use segment drawing below
-        t: t,
-      });
-    }
+let assembling  = true;
+let progress    = 0;
+let holding     = false;
+let holdTimer   = 0;
+let transitioning = false;
+const ANIM_F    = 230;
+const HOLD_F    = 110;
 
-    lines.push({
-      pts,
-      width: 0.18 + Math.random() * 0.22,
-      baseOpacity: 0.025 + Math.random() * 0.04,
-      length: pts.length,
-    });
-  }
-
-  return lines;
+function applyFormation() {
+  const targets = FORMATIONS[themeIdx]();
+  particles.forEach((p, i) => {
+    p.setTarget(targets[i].x, targets[i].y);
+    p.setScatter();
+  });
 }
 
-// ── Spawn colony at position ──
-let colonyId = 0;
-function spawnColony(cx, cy) {
-  const id = colonyId++;
-  const nodeCount = 4 + Math.floor(Math.random() * 6);
+function triggerNext() {
+  if (transitioning) return;
+  transitioning = true;
 
-  for (let i = 0; i < nodeCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const dist = Math.random() * 35;
-    const r = 14 + Math.random() * 32;
-    const node = new SpiralNode(
-      cx + Math.cos(angle) * dist,
-      cy + Math.sin(angle) * dist,
-      r, id
-    );
-    // stagger birth
-    node.age = -Math.floor(i * 18);
-    nodes.push(node);
-  }
+  // dissolve
+  assembling = false;
+  progress   = 0;
+  holding    = false;
 
-  colonies.push({ id, x: cx, y: cy });
+  const dissolveMs = (ANIM_F / 60) * 1000 + 150;
+  setTimeout(() => {
+    // switch theme
+    themeIdx  = (themeIdx + 1) % THEMES.length;
+    theme     = THEMES[themeIdx];
+    targetBg  = [...theme.circleBg];
 
-  // occasionally spawn a satellite — smaller node drifting away
-  if (Math.random() < 0.45) {
-    const angle = Math.random() * Math.PI * 2;
-    const sat = new SpiralNode(
-      cx + Math.cos(angle) * (50 + Math.random() * 60),
-      cy + Math.sin(angle) * (50 + Math.random() * 60),
-      8 + Math.random() * 14, id
-    );
-    sat.age = -90;
-    nodes.push(sat);
-  }
+    modeLabel.style.opacity = '0';
+    setTimeout(() => {
+      modeLabel.textContent   = theme.name;
+      modeLabel.style.opacity = '1';
+    }, 350);
+
+    applyFormation();
+    assembling    = true;
+    progress      = 0;
+    transitioning = false;
+  }, dissolveMs);
 }
 
-// ── Draw thin arcs between nearby nodes ──
-function drawConnections() {
-  const live = nodes.filter(n => n.alive && n.age > 0);
-  for (let i = 0; i < live.length; i++) {
-    for (let j = i + 1; j < live.length; j++) {
-      const a = live[i], b = live[j];
-      const dx = a.x - b.x, dy = a.y - b.y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d > 160 || d < 5) continue;
-
-      const alpha = (1 - d / 160) * 0.022;
-      // arc midpoint offset for curve
-      const mx = (a.x + b.x) / 2 + (Math.random() - 0.5) * 30;
-      const my = (a.y + b.y) / 2 + (Math.random() - 0.5) * 30;
-
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.quadraticCurveTo(mx, my, b.x, b.y);
-      ctx.strokeStyle = `rgba(10,10,10,${alpha})`;
-      ctx.lineWidth = 0.4;
-      ctx.stroke();
-    }
-  }
-}
+applyFormation();
+canvas.addEventListener('click', triggerNext);
 
 // ── Main loop ──
 function loop() {
-  // Very slow fade — let lines accumulate like growth layers
-  ctx.fillStyle = 'rgba(248,246,242,0.06)';
+  const cx = CX(), cy = CY(), r = R();
+  const [fgR, fgG, fgB] = theme.fg;
+
+  // lerp circle bg color
+  curBg[0] += (targetBg[0] - curBg[0]) * 0.04;
+  curBg[1] += (targetBg[1] - curBg[1]) * 0.04;
+  curBg[2] += (targetBg[2] - curBg[2]) * 0.04;
+
+  // 1. clear full canvas with outer bg (always dark)
+  ctx.fillStyle = '#080808';
   ctx.fillRect(0, 0, W, H);
 
-  drawConnections();
+  // 2. fill circle with current theme bg color
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = `rgb(${Math.round(curBg[0])},${Math.round(curBg[1])},${Math.round(curBg[2])})`;
+  ctx.fill();
+  ctx.restore();
 
-  nodes = nodes.filter(n => {
-    n.update();
-    n.draw();
-    return n.alive;
-  });
+  // 3. clip particles to inside circle
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+
+  const prog = Math.min(1, progress / ANIM_F);
+
+  if (holding) {
+    holdTimer++;
+    particles.forEach(p => {
+      p.x += Math.sin(p.phase + holdTimer * 0.03) * 0.07;
+      p.y += Math.cos(p.phase + holdTimer * 0.025) * 0.07;
+      p.draw(fgR, fgG, fgB, true, 1);
+    });
+    // just keep holding — only click triggers next
+  } else {
+    progress++;
+    particles.forEach(p => {
+      p.update(assembling, prog);
+      p.draw(fgR, fgG, fgB, assembling, prog);
+    });
+    if (progress >= ANIM_F && assembling) {
+      holding   = true;
+      holdTimer = 0;
+    }
+  }
+
+  ctx.restore();
+
+  // 4. subtle circle edge
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth   = 1;
+  ctx.stroke();
+  ctx.restore();
 
   requestAnimationFrame(loop);
 }
 
-// ── Interaction ──
-canvas.addEventListener('click', e => {
-  const rect = canvas.getBoundingClientRect();
-  spawnColony(e.clientX - rect.left, e.clientY - rect.top);
-});
-
-// Drag to paint colonies
-let painting = false;
-let lastPaint = 0;
-canvas.addEventListener('mousedown', () => { painting = true; });
-canvas.addEventListener('mouseup', () => { painting = false; });
-canvas.addEventListener('mousemove', e => {
-  if (!painting) return;
-  const now = Date.now();
-  if (now - lastPaint < 280) return;
-  lastPaint = now;
-  const rect = canvas.getBoundingClientRect();
-  spawnColony(e.clientX - rect.left, e.clientY - rect.top);
-});
-
-function resetAll() {
-  nodes = [];
-  colonies = [];
-  ctx.fillStyle = '#f8f6f2';
-  ctx.fillRect(0, 0, W, H);
-}
-
-// Seed a few initial colonies
-function seedInitial() {
-  const seeds = [
-    { x: W * 0.28, y: H * 0.25 },
-    { x: W * 0.62, y: H * 0.32 },
-    { x: W * 0.42, y: H * 0.58 },
-    { x: W * 0.72, y: H * 0.68 },
-    { x: W * 0.22, y: H * 0.72 },
-  ];
-  seeds.forEach((s, i) => {
-    setTimeout(() => spawnColony(s.x, s.y), i * 200);
-  });
-}
-
-seedInitial();
 loop();
 
 window.addEventListener('resize', () => {
-  W = canvas.width = window.innerWidth;
+  W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
+  applyFormation();
 });
 </script>
 </body>

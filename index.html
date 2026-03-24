@@ -8,439 +8,367 @@
   @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap');
 
   :root {
-    --bg:      #ffffff;
-    --fg:      #111111;
-    --gray:    #888888;
-    --border:  #e0e0e0;
-    --label-w: 200px;
-    --side-pad: 48px;
+    --bg:     #ffffff;
+    --fg:     #111111;
+    --gray:   #999999;
+    --border: #e8e8e8;
+    --side:   260px;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  html { font-size: 13px; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
 
   body {
     background: var(--bg);
     color: var(--fg);
     font-family: 'DM Sans', sans-serif;
     font-weight: 300;
-    line-height: 1.5;
-    min-height: 100vh;
-  }
-
-  /* ── Top nav ── */
-  #topnav {
-    position: fixed; top: 0; left: 0; right: 0;
-    height: 48px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    padding: 0 var(--side-pad);
-    background: var(--bg);
-    z-index: 100;
-    gap: 0;
-  }
-
-  #nav-logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px; letter-spacing: 0.05em;
-    color: var(--fg); font-weight: 400;
-    margin-right: 40px;
-    flex-shrink: 0;
-  }
-
-  #nav-tabs {
-    display: flex; gap: 0;
-    border-left: 1px solid var(--border);
-  }
-
-  .nav-tab {
-    font-size: 11px; letter-spacing: 0.02em;
-    color: var(--gray);
-    padding: 0 20px; height: 48px;
-    display: flex; align-items: center;
-    cursor: pointer;
-    border-right: 1px solid var(--border);
-    transition: color 0.2s, background 0.2s;
-    white-space: nowrap;
-    user-select: none;
-  }
-
-  .nav-tab:hover { color: var(--fg); }
-  .nav-tab.active { color: var(--fg); background: #f8f8f8; }
-
-  #nav-right {
-    margin-left: auto;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px; letter-spacing: 0.08em;
-    color: var(--gray);
-  }
-
-  /* ── Page layout ── */
-  #page {
-    margin-top: 48px;
-    display: flex; flex-direction: column;
-  }
-
-  /* ── Header section ── */
-  #header-section {
-    padding: 52px var(--side-pad) 40px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-end; gap: 80px;
-  }
-
-  #header-title {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 36px; font-weight: 300;
-    letter-spacing: -0.01em; line-height: 1.1;
-    flex-shrink: 0;
-  }
-
-  #header-title em {
-    font-style: italic; color: var(--gray);
-  }
-
-  #header-meta {
-    font-size: 11px; color: var(--gray);
-    letter-spacing: 0.02em; line-height: 1.8;
-    padding-bottom: 4px;
-  }
-
-  /* ── Row: label + content ── */
-  .row {
     display: flex;
-    border-bottom: 1px solid var(--border);
-    min-height: 48px;
   }
 
-  .row-label {
-    width: var(--label-w);
-    flex-shrink: 0;
-    padding: 14px var(--side-pad) 14px var(--side-pad);
-    font-size: 11px; color: var(--gray);
-    letter-spacing: 0.03em;
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--side);
+    height: 100vh;
     border-right: 1px solid var(--border);
-    display: flex; align-items: flex-start;
-    padding-top: 16px;
-  }
-
-  .row-content {
-    flex: 1;
-    display: flex; flex-direction: column;
-  }
-
-  /* ── Test entry row ── */
-  .test-row {
-    display: flex; align-items: center;
-    padding: 0 32px;
-    min-height: 48px;
-    border-bottom: 1px solid var(--border);
-    cursor: pointer;
-    transition: background 0.15s;
-    gap: 0;
-  }
-  .test-row:last-child { border-bottom: none; }
-  .test-row:hover { background: #f8f8f8; }
-  .test-row.active { background: #f4f4f4; }
-
-  .test-num {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px; color: var(--gray);
-    letter-spacing: 0.08em;
-    width: 36px; flex-shrink: 0;
-  }
-
-  .test-name {
-    font-size: 12px; font-weight: 400;
-    flex: 1;
-    letter-spacing: 0.01em;
-  }
-
-  .test-sub {
-    font-size: 11px; color: var(--gray);
-    letter-spacing: 0.02em;
-    margin-left: auto;
-  }
-
-  .test-arrow {
-    font-size: 11px; color: var(--border);
-    margin-left: 24px;
-    transition: color 0.2s, transform 0.2s;
-  }
-  .test-row:hover .test-arrow,
-  .test-row.active .test-arrow {
-    color: var(--fg);
-    transform: translateX(2px);
-  }
-
-  /* ── Species rows ── */
-  .spec-row {
-    display: flex; align-items: center;
-    padding: 0 32px;
-    min-height: 40px;
-    border-bottom: 1px solid var(--border);
-    gap: 0;
-  }
-  .spec-row:last-child { border-bottom: none; }
-
-  .spec-key {
-    font-size: 11px; color: var(--gray);
-    width: 160px; flex-shrink: 0;
-    letter-spacing: 0.02em;
-  }
-
-  .spec-val {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.03em;
-  }
-
-  /* ── Iframe viewer ── */
-  #viewer {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    z-index: 200;
-    display: none;
+    display: flex;
     flex-direction: column;
-  }
-
-  #viewer.open { display: flex; }
-
-  #viewer-bar {
-    height: 48px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center;
-    padding: 0 var(--side-pad);
-    gap: 24px;
     flex-shrink: 0;
-    background: var(--bg);
+    overflow-y: auto;
   }
 
-  #viewer-back {
-    font-size: 11px; color: var(--gray);
-    cursor: pointer; letter-spacing: 0.03em;
-    transition: color 0.2s;
-    display: flex; align-items: center; gap: 8px;
-    background: none; border: none; font-family: inherit;
-    padding: 0;
-  }
-  #viewer-back:hover { color: var(--fg); }
-
-  #viewer-title {
-    font-size: 11px; letter-spacing: 0.04em;
-    color: var(--fg);
+  #sidebar-header {
+    padding: 36px 28px 28px;
+    border-bottom: 1px solid var(--border);
   }
 
-  #viewer-sub {
-    font-size: 10px; color: var(--gray);
+  #sidebar-title {
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    line-height: 1.4;
+    margin-bottom: 10px;
+  }
+
+  #sidebar-title em {
+    font-style: italic;
+    color: var(--gray);
+  }
+
+  #sidebar-meta {
+    font-size: 10px;
+    color: var(--gray);
+    letter-spacing: 0.04em;
+    line-height: 1.9;
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── Nav items ── */
+  .nav-section-label {
+    padding: 20px 28px 8px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--gray);
+    text-transform: uppercase;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    height: 44px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+    gap: 14px;
+  }
+
+  .nav-item:hover { background: #f8f8f8; }
+
+  .nav-item.active {
+    border-left-color: var(--fg);
+    background: #f5f5f5;
+  }
+
+  .nav-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--gray);
+    letter-spacing: 0.08em;
+    width: 18px;
+    flex-shrink: 0;
+  }
+
+  .nav-item.active .nav-num { color: var(--fg); }
+
+  .nav-name {
+    font-size: 11px;
+    letter-spacing: 0.01em;
+    color: var(--gray);
+    transition: color 0.15s;
+  }
+
+  .nav-item:hover .nav-name,
+  .nav-item.active .nav-name { color: var(--fg); }
+
+  /* ── Divider ── */
+  .nav-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 12px 0;
+  }
+
+  /* ── Sidebar footer ── */
+  #sidebar-footer {
+    margin-top: auto;
+    padding: 20px 28px;
+    border-top: 1px solid var(--border);
+    font-size: 9px;
+    color: var(--gray);
     letter-spacing: 0.06em;
     font-family: 'DM Mono', monospace;
-    margin-left: auto;
+    line-height: 1.9;
   }
 
-  #viewer-frame {
+  /* ── Main content ── */
+  #main {
     flex: 1;
-    border: none;
-    display: block;
+    height: 100vh;
+    position: relative;
+    overflow: hidden;
   }
 
-  /* ── Utility ── */
-  .section-spacer { height: 40px; }
+  /* ── Intro panel ── */
+  #intro {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 72px;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+
+  #intro.hidden { opacity: 0; pointer-events: none; }
+
+  #intro-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: var(--gray);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  #intro-heading {
+    font-size: clamp(32px, 4vw, 52px);
+    font-weight: 300;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    margin-bottom: 32px;
+  }
+
+  #intro-heading em { font-style: italic; color: var(--gray); }
+
+  #intro-body {
+    font-size: 12px;
+    color: var(--gray);
+    line-height: 2.0;
+    max-width: 420px;
+    letter-spacing: 0.02em;
+  }
+
+  #intro-props {
+    margin-top: 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-width: 500px;
+  }
+
+  .prop-row {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+
+  .prop-row:first-child { border-top: 1px solid var(--border); }
+
+  .prop-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    color: var(--gray);
+    width: 110px;
+    flex-shrink: 0;
+  }
+
+  .prop-val { color: var(--fg); }
+
+  /* ── iframe panel ── */
+  #frame-wrap {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  #frame-wrap.visible {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  #frame-wrap iframe {
+    width: 100%; height: 100%;
+    border: none; display: block;
+  }
 </style>
 </head>
 <body>
 
-<!-- Top nav -->
-<nav id="topnav">
-  <div id="nav-logo">Language as Fungi</div>
-  <div id="nav-tabs">
-    <div class="nav-tab active">Overview</div>
-    <div class="nav-tab">Tests</div>
-    <div class="nav-tab">Species</div>
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <div id="sidebar-title">Language<br>as <em>Fungi</em></div>
+    <div id="sidebar-meta">
+      Cross-Disciplinary Studio<br>
+      Process Tests · 01–05
+    </div>
   </div>
 
+  <div class="nav-section-label">Tests</div>
+
+  <div class="nav-item" id="nav-intro" onclick="showIntro()">
+    <span class="nav-num">↩</span>
+    <span class="nav-name">Overview</span>
+  </div>
+
+  <div class="nav-divider"></div>
+
+  <div class="nav-item" id="nav-t1" onclick="showTest('t1')">
+    <span class="nav-num">01</span>
+    <span class="nav-name">Mycelium Typography</span>
+  </div>
+  <div class="nav-item" id="nav-t2" onclick="showTest('t2')">
+    <span class="nav-num">02</span>
+    <span class="nav-name">Fission</span>
+  </div>
+  <div class="nav-item" id="nav-t3" onclick="showTest('t3')">
+    <span class="nav-num">03</span>
+    <span class="nav-name">Mycelium Network</span>
+  </div>
+  <div class="nav-item" id="nav-t4" onclick="showTest('t4')">
+    <span class="nav-num">04</span>
+    <span class="nav-name">Morphogenesis</span>
+  </div>
+  <div class="nav-item" id="nav-t5" onclick="showTest('t5')">
+    <span class="nav-num">05</span>
+    <span class="nav-name">Assembly / Dissolution</span>
+  </div>
+
+  <div id="sidebar-footer">
+    Species — Fungi<br>
+    Medium — Code<br>
+    Pratt MFA · 2026
+  </div>
 </nav>
 
-<div id="page">
+<!-- Main -->
+<div id="main">
 
-  <!-- Header -->
-  <div id="header-section">
-    <h1 id="header-title">Language<br>as <em>Fungi</em></h1>
-    <div id="header-meta">
-      Cross-Disciplinary Studio<br>
-      Process Tests · 01 — 05<br>
-      Medium — Code
-    </div>
-  </div>
-
-  <!-- Tests section -->
-  <div class="row">
-    <div class="row-label">Tests</div>
-    <div class="row-content">
-
-      <div class="test-row" onclick="openTest('t1')">
-        <span class="test-num">01</span>
-        <span class="test-name">Mycelium Typography</span>
-        <span class="test-sub">Growth as letterform</span>
-        <span class="test-arrow">→</span>
+  <!-- Intro -->
+  <div id="intro">
+    <div id="intro-eyebrow">Cross-Disciplinary Studio</div>
+    <h1 id="intro-heading">Language<br>as <em>Fungi</em></h1>
+    <p id="intro-body">
+      Five experiments exploring language as methodology —<br>
+      inspired by fungi: decomposer, networker,<br>
+      communicator without a center.
+    </p>
+    <div id="intro-props">
+      <div class="prop-row">
+        <span class="prop-key">Proposition 01</span>
+        <span class="prop-val">Networks function without a center</span>
       </div>
-
-      <div class="test-row" onclick="openTest('t2')">
-        <span class="test-num">02</span>
-        <span class="test-name">Fission</span>
-        <span class="test-sub">Colony splits and merges</span>
-        <span class="test-arrow">→</span>
+      <div class="prop-row">
+        <span class="prop-key">Proposition 02</span>
+        <span class="prop-val">Decomposition is a condition for creation</span>
       </div>
-
-      <div class="test-row" onclick="openTest('t3')">
-        <span class="test-num">03</span>
-        <span class="test-name">Mycelium Network</span>
-        <span class="test-sub">3D growth on click</span>
-        <span class="test-arrow">→</span>
-      </div>
-
-      <div class="test-row" onclick="openTest('t4')">
-        <span class="test-num">04</span>
-        <span class="test-name">Morphogenesis</span>
-        <span class="test-sub">One form, infinite shapes</span>
-        <span class="test-arrow">→</span>
-      </div>
-
-      <div class="test-row" onclick="openTest('t5')">
-        <span class="test-num">05</span>
-        <span class="test-name">Assembly / Dissolution</span>
-        <span class="test-sub">Particles form and dissolve</span>
-        <span class="test-arrow">→</span>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- Concept -->
-  <div class="row">
-    <div class="row-label">Concept</div>
-    <div class="row-content">
-      <div class="spec-row">
-        <span class="spec-key">Framework</span>
-        <span class="spec-val">Language as methodology, not representation</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Proposition 01</span>
-        <span class="spec-val">Networks function without a center</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Proposition 02</span>
-        <span class="spec-val">Decomposition is a condition for creation</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Proposition 03</span>
-        <span class="spec-val">Intelligence without a brain</span>
+      <div class="prop-row">
+        <span class="prop-key">Proposition 03</span>
+        <span class="prop-val">Intelligence without a brain</span>
       </div>
     </div>
   </div>
 
-  <!-- Species -->
-  <div class="row">
-    <div class="row-label">Species</div>
-    <div class="row-content">
-      <div class="spec-row">
-        <span class="spec-key">Kingdom</span>
-        <span class="spec-val">Fungi</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Classification</span>
-        <span class="spec-val">Neither animal nor plant — a third kingdom</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Role</span>
-        <span class="spec-val">Decomposer · Networker · Communicator</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Communication</span>
-        <span class="spec-val">Chemical signals · Electrical impulses · Physical growth</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Key property</span>
-        <span class="spec-val">Mycelium — invisible threads beneath the surface</span>
-      </div>
-    </div>
+  <!-- iframe -->
+  <div id="frame-wrap">
+    <iframe id="main-frame" src="about:blank"></iframe>
   </div>
 
-  <!-- Studio -->
-  <div class="row">
-    <div class="row-label">Studio</div>
-    <div class="row-content">
-      <div class="spec-row">
-        <span class="spec-key">Course</span>
-        <span class="spec-val">Cross-Disciplinary Studio</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Program</span>
-        <span class="spec-val">MFA Communication Design</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Institution</span>
-        <span class="spec-val">Pratt Institute</span>
-      </div>
-      <div class="spec-row">
-        <span class="spec-key">Year</span>
-        <span class="spec-val">2026</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="section-spacer"></div>
-
-</div><!-- /page -->
-
-<!-- Viewer overlay -->
-<div id="viewer">
-  <div id="viewer-bar">
-    <button id="viewer-back" onclick="closeTest()">← Back</button>
-    <span id="viewer-title"></span>
-    <span id="viewer-sub" id="viewer-sub"></span>
-  </div>
-  <iframe id="viewer-frame" src="about:blank"></iframe>
 </div>
 
 <script>
   const TESTS = {
-    t1: { title: '01 — Mycelium Typography',   sub: 'Growth as letterform · canvas',         src: 'test1_mycelium_typography.html'    },
-    t2: { title: '02 — Fission',            sub: 'Colony splits and merges · metaball',         src: 'test2_decomposition_language.html' },
-    t3: { title: '03 — Mycelium Network',       sub: '3D growth on click · Three.js',         src: 'test3_slow_language.html'          },
-    t4: { title: '04 — Morphogenesis',       sub: 'One form, infinite shapes · canvas',       src: 'test4_centerless_network.html'     },
-    t5: { title: '05 — Assembly / Dissolution', sub: 'Particles form and dissolve · canvas',  src: 'test5_electrical_signal.html'      },
+    t1: { src: 'test1_mycelium_typography.html' },
+    t2: { src: 'test2_decomposition_language.html' },
+    t3: { src: 'test3_slow_language.html' },
+    t4: { src: 'test4_centerless_network.html' },
+    t5: { src: 'test5_electrical_signal.html' },
   };
 
   const loaded = {};
-  const viewer  = document.getElementById('viewer');
-  const frame   = document.getElementById('viewer-frame');
+  let current  = null;
 
-  function openTest(id) {
-    const t = TESTS[id];
-    document.getElementById('viewer-title').textContent = t.title;
-    document.getElementById('viewer-sub').textContent   = t.sub;
-    if (!loaded[id]) { frame.src = t.src; loaded[id] = true; }
-    viewer.classList.add('open');
-
-    // mark active
-    document.querySelectorAll('.test-row').forEach(r => r.classList.remove('active'));
-    const rows = document.querySelectorAll('.test-row');
-    const keys = Object.keys(TESTS);
-    rows[keys.indexOf(id)]?.classList.add('active');
+  function clearActive() {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   }
 
-  function closeTest() {
-    viewer.classList.remove('open');
+  function showTest(id) {
+    clearActive();
+    document.getElementById('nav-' + id).classList.add('active');
+
+    if (!loaded[id]) {
+      document.getElementById('main-frame').src = TESTS[id].src;
+      loaded[id] = true;
+    }
+
+    document.getElementById('intro').classList.add('hidden');
+    document.getElementById('frame-wrap').classList.add('visible');
+    current = id;
   }
 
-  window.openTest  = openTest;
-  window.closeTest = closeTest;
+  function showIntro() {
+    clearActive();
+    document.getElementById('nav-intro').classList.add('active');
+    document.getElementById('intro').classList.remove('hidden');
+    document.getElementById('frame-wrap').classList.remove('visible');
+    current = null;
+  }
 
-  // keyboard: Escape to close
+  // keyboard nav
+  const order = ['t1','t2','t3','t4','t5'];
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeTest();
+    if (e.key === 'Escape') { showIntro(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      const idx = current ? order.indexOf(current) : -1;
+      if (idx < order.length-1) showTest(order[idx+1]);
+    }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      const idx = current ? order.indexOf(current) : order.length;
+      if (idx > 0) showTest(order[idx-1]);
+      else showIntro();
+    }
   });
+
+  // start on overview
+  showIntro();
 </script>
 </body>
 </html>
